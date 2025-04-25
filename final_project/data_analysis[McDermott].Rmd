@@ -1,0 +1,325 @@
+---
+title: "NHANES data analysis"
+output: html_document
+date: "2025-04-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+NHANESresearch <- read.csv("C:/Users/ekatm/OneDrive/Desktop/NHANES Data/data/clean_data")
+```
+
+
+## R Markdown
+DATA ANALYSIS OF MULTIVITAMIN USAGE AND HIGH-SENSITIVITY C-PROTEIN AMONG DIFFERENT DEMOGRAPHICS.
+```{r}
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(modelsummary)
+library(questionr)
+library(tidyselect)
+```
+
+```{r}
+NHANESresearchreduced <- NHANESresearch %>% 
+  filter(NHANESresearch$HouseholdIncome== c("<$5,000", "5-10,000", "$10-15,000", "$15-20,000", "$20-25,000", "$25-35,000", "$35-45,000", "$45-55,000", "$55-65,000", "$65-75,000", "$75-100,000", ">$100,000"))
+
+NHANESresearchreduced
+
+
+
+```
+
+
+```{r}
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==1] <-"<$5,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==2] <- "$5-10,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==3] <- "$10-15,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==4] <- "$15-20,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==5] <- "$20-25,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==6] <- "$25-35,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==7] <- "$35-45,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==8] <- "$45-55,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==9] <- "$55-65,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==10] <- "$65-75,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==14] <- "$75-100,000"
+NHANESresearch$HouseholdIncome[NHANESresearch$HouseholdIncome==15] <- ">$100,000"
+
+
+```
+
+
+```{r}
+head(NHANESresearch)
+```
+
+#Descriptive Statistics for our variables:
+
+Age
+```{r}
+NHANESresearch %>% 
+  summarize(mean(Age), sd(Age), count=n())
+
+
+NHANESresearch %>% 
+  ggplot(aes(x=Age)) + geom_histogram(bins=35, color="coral", fill="ivory",) + labs(title="Respondent Age", x="Age (Years)")
+```
+Gender
+```{r}
+#freq(Var, cum=TRUE, na.omit(Var))
+freq(NHANESresearch$Gender, cum=TRUE)
+  
+NHANESresearch %>%
+  ggplot(aes(x=Gender)) + geom_bar(postition="dodge", color="coral", fill="ivory") + labs(title="Respondent Gender")
+```
+
+BMI cat
+```{r}
+freq(NHANESresearch$BMIcat, cum=TRUE)
+
+
+NHANESresearch %>% 
+  drop_na(BMIcat) %>% 
+  ggplot(aes(x=BMIcat)) + geom_bar(postition="dodge", color="coral", fill="ivory") + labs(title= "BMI Category", x="BMI category")
+```
+
+BMI
+```{r}
+NHANESresearch %>% 
+  drop_na(BMI) %>% 
+  summarize(mean(BMI), sd(BMI), count=n())
+
+
+
+NHANESresearch %>%
+  drop_na(BMI) %>% 
+  ggplot(aes(x=BMI)) + geom_histogram(bins=35, color="coral", fill="ivory",) + labs(title="BMI")
+
+```
+
+High-Sensitivity C-Reactive
+
+```{r}
+summary(NHANESresearch$HSCReactive)
+
+#IQR= 3.56-0.55=3.01- upper limit is 8.9; everything below 1stQ is acceptable data.
+
+1.5*3.56
+.55-5.34 #lowerbound -4.79
+3.56+5.34 #upperbound 8.9
+
+NHANESresearch %>% 
+  drop_na(HSCReactive) %>% 
+  summarize(mean(HSCReactive), sd(HSCReactive), count=n())
+
+NHANESresearch %>% 
+  drop_na(HSCReactive) %>% 
+  ggplot(aes(x=HSCReactive)) + geom_histogram(color="coral", fill="ivory") + labs(title="High-Sensitivity C-Reactive Protein Levels", x="HSCRP (mg/L)")
+
+#filtered to exclude outliers.
+
+NHANESresearch %>% 
+  drop_na(HSCReactive) %>% 
+  filter(HSCReactive<8.9) %>% 
+  ggplot(aes(x=HSCReactive)) + geom_histogram(color="coral", fill="ivory") + labs(title="High-Sensitivity C-Reactive Protein Levels (Outliers Removed)", x="HSCRP (mg/L)")
+```
+```{r}
+NHANESresearch <- NHANESresearch %>% 
+  mutate(HSCRPlevel = case_when(
+    HSCReactive >=3 ~"High",
+    HSCReactive <3 ~"Healthy"
+  ))
+NHANESresearch <-NHANESresearch %>% 
+  drop_na(HSCRPlevel)
+
+freq(NHANESresearch$HSCRPlevel, cum=TRUE)
+
+NHANESresearch %>% 
+  ggplot(aes(x=HSCRPlevel)) + geom_bar(postition="dodge", color="coral", fill="ivory") + labs(title="High Sensitivity C-Reactive Protein Level", subtitle= "Healthy HSCRP <=3mg/L, High HSCRP> 3mg/L")
+```
+
+
+Household Income
+```{r}
+freq(NHANESresearchreduced$HouseholdIncome, cum=TRUE)
+
+
+NHANESresearchreduced %>% 
+  drop_na(HouseholdIncome) %>% 
+  summarize(mean(HouseholdIncome), sd(HouseholdIncome), count=n())
+
+
+NHANESresearchreduced %>% 
+  drop_na(HouseholdIncome) %>% 
+  ggplot(aes(x=HouseholdIncome)) + geom_bar(color="coral", fill="ivory") + labs(title="Annual Household Income", x="Annual Household Income (USD)") + theme(axis.text.x = element_text(angle=45, hjust=1, size=10))
+```
+
+Multivitamin 
+```{r}
+freq(NHANESresearch$Multivitamin, cum=TRUE)
+
+NHANESresearch %>% 
+  drop_na(Multivitamin) %>% 
+  ggplot(aes(x=Multivitamin)) + geom_bar(postition="dodge", color="coral", fill="ivory") + labs(title="Daily Multivitamin Supplement", x="'Do You Take a Daily Dietary Supplement?'")
+
+
+```
+
+
+#Bivariate: Who's taking their vitamins?
+```{r}
+
+income_multivitamin <- xtabs(~Multivitamin + HouseholdIncome, data=NHANESresearch)
+prop.table(income_multivitamin)*100
+
+NHANESresearchreduced %>% 
+  drop_na(Multivitamin) %>% 
+  ggplot(aes(x=Multivitamin)) + geom_bar(postition="dodge", color="coral", fill="ivory") + facet_wrap(~HouseholdIncome) + labs(title="Multivitamin Usage by Household Income")
+```
+There are no brackets in which people are more likely to take a vitamin than not;but is there a signficant difference between brackets?
+```{r}
+fit <- aov(HSCReactive~HouseholdIncome, data=NHANESresearchreduced)
+summary(fit)
+#Yes, positive significant correlation. ad hoc test?
+
+pairwise <- TukeyHSD(fit)
+pairwise
+
+IncomeHSCRPplot <- as.data.frame(pairwise[[1]])
+IncomeHSCRPplot$conditions <- row.names(IncomeHSCRPplot)
+
+ggplot(data=IncomeHSCRPplot, aes(x=conditions, y=diff)) +
+  geom_point(size=2, color="coral") +
+  geom_errorbar(aes(ymin=lwr, ymax=upr, width=.2)) +
+  geom_hline(yintercept=0, color="coral", linetype="dashed") +
+  labs(y="Differences in mean levels", x="",
+       title="95% family-wise confidence levels") +
+  theme_bw() + theme(axis.text.x = element_text(angle=45, hjust=1, size=10))
+  coord_flip() 
+```
+
+
+```{r}
+bmicat_vitamin<-xtabs(~Multivitamin + BMIcat, data=NHANESresearch)
+prop.table(bmicat_vitamin)*100
+NHANESresearch %>% 
+  drop_na(Multivitamin) %>%
+  ggplot(aes(x=Multivitamin)) + geom_bar(postition="dodge", color="coral", fill="ivory") + facet_wrap(~Gender) 
+
+
+#Data %>% drop_na %>%  ggplot(aes(x=cat, y=cont)) + geom_boxplot(color="", fill="") + facet_wrap(~cont2) + labs(title="", x="", y="")
+```
+
+Is there a signficicant difference between individuals who do and do not take multivitamins?
+T-test:
+```{r}
+NHANESresearch %>% 
+  drop_na(Multivitamin) %>% 
+  drop_na(HSCReactive) %>% 
+  group_by(Multivitamin) %>% 
+  summarize(mean(HSCReactive), sd(HSCReactive), count=n())
+
+var.test(NHANESresearch$HSCReactive~NHANESresearch$Multivitamin, alternative="two.sided")
+
+t.test(HSCReactive~Multivitamin, var.equal=FALSE, data=NHANESresearch %>%  drop_na(Multivitamin))
+
+NHANESresearch %>% 
+  drop_na(Multivitamin) %>% 
+  drop_na(HSCReactive) %>% 
+  ggplot(aes(x=Multivitamin, y=HSCReactive)) +
+  geom_boxplot(color="coral", fill="ivory", width=.65) + 
+  labs(title="Multivitamin Use and HSCRP", x="Daily Multivitamin Use", y="Mean High-Sensitivity C-Reactive Protein level") + theme_light()
+
+#Filtered for outliers
+NHANESresearch %>% 
+  drop_na(Multivitamin) %>% 
+  drop_na(HSCReactive) %>% 
+  filter(HSCReactive<6.67) %>% 
+  ggplot(aes(x=Multivitamin, y=HSCReactive)) +
+  geom_boxplot(color="coral", fill="ivory", width=.65) + 
+  labs(title="Multivitamin Use and HSCRP", x="Daily Multivitamin Use", y="Mean High-Sensitivity C-Reactive Protein level") + theme_light()
+```
+There is a statistically significant difference in levels of High-Sensitvity C-reactive proteins between people who take supplements and people who do not!!!　(^_^) Surprisingly, the mean HSCRP levels is higher in people who do than in people who don't.
+
+Are there significant differences is BMI category between people who do and don't take multivitamins? 
+```{r}
+#table_name <- xtabs(~ CatVar1 + CatVar2, data=)
+#chisq.test(table_name)
+
+BMIcatHSCRP <- xtabs(~BMIcat + Multivitamin, data=NHANESresearch)
+BMIcatHSCRP
+prop.table(BMIcatHSCRP)*100
+chisq.test(BMIcatHSCRP)
+
+```
+Yes! There is a significant difference between BMI groups in their multivtamin usage.
+
+
+Correlation between BMI and HSCRP? 
+```{r}
+NHANESresearch %>% 
+  drop_na(HSCReactive) %>% 
+  group_by(BMIcat) %>% 
+  drop_na(BMIcat) %>% 
+  summarize(mean=mean(HSCReactive), sd=sd(HSCReactive), count=n())
+            
+            
+NHANESresearch %>% 
+  drop_na(HSCReactive) %>% 
+  drop_na(BMIcat) %>% 
+  dunn.test(x=NHANESresearch$HSCReactive, g=NHANESresearch$BMIcat, kw=TRUE)
+
+
+#correlation test code: cor.test(data$DepVar, data$IndVar, method="pearson")
+cor.test(NHANESresearch$HSCReactive,NHANESresearch$BMI, method= "pearson")
+#scatter plot code: #ggplot(aes(x=DepVar, y=IndVar), data=) + geom_point(color="") + geom_smooth(method=lm, color="") + labs(x="", y="") + theme_bw()
+ggplot(aes(x=HSCReactive, y=BMI), data=NHANESresearch) + geom_point(color="coral", alpha=.5) + geom_smooth(method=lm, color="wheat4") + labs(title= "Correlation of BMI to HSCRP levels", x="HSCRP (mg/L)", y="BMI")
+
+
+```
+There is a slight but significant positive correlation between BMI and HSCRP levels.
+
+
+ANOVA and graph for BMI cat & HSCR
+```{r}
+bmihscfit <- aov(HSCReactive~BMIcat, data=NHANESresearch)
+summary(bmihscfit)
+
+BMIcatHSCRPplot <- NHANESresearch %>% 
+  group_by(BMIcat) %>% 
+  drop_na(BMIcat) %>% 
+  drop_na(HSCReactive) %>% 
+  summarize(n=n(),
+            mean= mean(HSCReactive),
+            sd=sd(HSCReactive),
+            ci=qt(0.975, df=n-1)*sd/sqrt(n))
+ggplot(BMIcatHSCRPplot, aes(x=BMIcat, y=mean, group= 1)) +
+  geom_point(size=1, color="red", width=1.5) + 
+  geom_errorbar(aes(ymin=mean-ci,
+                    ymax=mean+ci),
+                width=.1) +
+  theme_bw() +
+  labs(x="BMI Category",
+       y="HSCRP",
+       title="BMI Category and HSCRP with 95% CI")
+```
+P value= 0; There is a correlation between BMIcat and 
+
+For odds test + chi squared, factor HSCRP into a dichotomous variable; identify healthy + unhealthy range?
+Run odds ratio: Higher odds of High HSCRP by taking/not taking vitamins?
+```{r}
+multicrpodds <-table(NHANESresearch$Multivitamin, NHANESresearch$HSCRPlevel)
+multicrpodds
+
+oddsratio(multicrpodds)
+#ggplot(data=database) + geom_mosaic(aes(x=product(IndVar), fill=(DepVar), na.rm=TRUE, show.legend=FALSE) + labs(title="", x="", y="")
+
+
+ggplot(data=NHANESresearch) + geom_mosaic(aes(x=product(Multivitamin), fill=HSCRPlevel), color="ivory", na.rm=TRUE, show.legend=FALSE) + labs(title="HSCRP Level by Multivitamin Usage", x= "Multivitamin", y= "HSCRP (mg/L)") + scale_fill_manual(values=c("Healthy"= "sandybrown", "High"="orangered"))
+``` 
+Yes- 1.13 Odds ratio- significant!! But it's not what I thought- People who take their multivitamins are more likely to have higher levels of HSCRP.
